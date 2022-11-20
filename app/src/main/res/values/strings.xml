@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">Assignment3</string>
+    <string name="email">Email</string>
+    <string name="password">Password</string>
+    <string name="login">Login</string>
+    <string name="signup">Sign Up</string>
+    <string name="name">Name</string>
+    <string name="phno">Phone No</string>
+    <string name="photo">Add Photo</string>
+    <string name="login_ex">Already have an account? Login now</string>
+    <string name="signup_ex">Don\'t have an account? Register Now</string>
+    <string name="search">Search</string>
+</resources>
