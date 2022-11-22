@@ -16,7 +16,9 @@ import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
 import com.google.android.material.textfield.TextInputLayout;
+import com.google.gson.Gson;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -52,9 +54,18 @@ public class Login extends AppCompatActivity {
                         try {
                             JSONObject object = new JSONObject(response);
                             if (object.getInt("code") == 1) {
-                                Toast.makeText(Login.this, object.getString("msg"), Toast.LENGTH_SHORT).show();
+                                JSONObject tempUser;
+                                try {
+                                    JSONArray jsonArray = object.getJSONArray("data");
+                                    tempUser = jsonArray.getJSONObject(0);
+                                } catch (Exception e) {
+                                    tempUser = object.getJSONObject("data");
+                                }
                                 Intent i = new Intent(Login.this, MainScreen.class);
-                                i.putExtra("email", mail);
+                                Gson gson = new Gson();
+                                String photoURL = "http://192.168.100.2:8080/chat_app/" + tempUser.getString("photo");
+                                String userJson = gson.toJson(new User(tempUser.getString("fullname"), tempUser.getString("email"), tempUser.getString("phno"), photoURL));
+                                i.putExtra("currentUser", userJson);
                                 startActivity(i);
                                 finish();
                             } else {

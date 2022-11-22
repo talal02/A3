@@ -10,4 +10,6 @@
     <string name="login_ex">Already have an account? Login now</string>
     <string name="signup_ex">Don\'t have an account? Register Now</string>
     <string name="search">Search</string>
+    <string name="send_message">Send Message</string>
+    <string name="hint_enter_msg">Enter Message</string>
 </resources>
