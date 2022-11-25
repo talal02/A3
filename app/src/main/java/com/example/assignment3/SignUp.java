@@ -54,6 +54,15 @@ public class SignUp extends AppCompatActivity {
         toLogin = findViewById(R.id.toLogin);
         Signup = findViewById(R.id.signupBtn);
 
+        toLogin.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent(SignUp.this, Login.class);
+                startActivity(intent);
+                finish();
+            }
+        });
+
         addPhoto.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -76,7 +85,7 @@ public class SignUp extends AppCompatActivity {
                 } else if (phno.getEditText().getText().toString().isEmpty()) {
                     phno.setError("Phone number is required");
                 } else {
-                    String url = "http://192.168.100.2:8080/chat_app/signup.php";
+                    String url = getString(R.string.ip_address) + "/chat_app/signup.php";
                     RequestQueue queue = Volley.newRequestQueue(SignUp.this);
                     StringRequest stringRequest = new StringRequest(Request.Method.POST, url, new Response.Listener<String>() {
                         @Override

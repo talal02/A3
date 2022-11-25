@@ -20,8 +20,10 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.SearchView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.android.volley.Request;
@@ -40,6 +42,8 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class MainScreen extends AppCompatActivity {
     private RecyclerView rv;
@@ -47,6 +51,8 @@ public class MainScreen extends AppCompatActivity {
     private ArrayList<User> users;
     private ArrayList<String> addedUsers;
     private User currentUser;
+    ImageView drawerdp;
+    TextView drawername, draweremail, drawerphno;
     MaterialTextView tv;
     RoundedImageView riv;
     @SuppressLint("MissingInflatedId")
@@ -57,9 +63,17 @@ public class MainScreen extends AppCompatActivity {
         rv = findViewById(R.id.contacts);
         tv=findViewById(R.id.user_name);
         riv=findViewById(R.id.user_img);
+        drawerdp = findViewById(R.id.profile_dp_drawer);
+        drawername = findViewById(R.id.profile_name_drawer);
+        draweremail = findViewById(R.id.profile_email_drawer);
+        drawerphno = findViewById(R.id.profile_phno_drawer);
         Gson gson = new Gson();
         currentUser = gson.fromJson(getIntent().getStringExtra("currentUser"), User.class);
         tv.setText(currentUser.getName());
+        drawername.setText(currentUser.getName());
+        draweremail.setText(currentUser.getEmail());
+        drawerphno.setText(currentUser.getPhno());
+        Glide.with(this).load(currentUser.getPhoto()).into(drawerdp);
         Glide.with(this).load(currentUser.getPhoto()).into(riv);
         riv.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -90,6 +104,68 @@ public class MainScreen extends AppCompatActivity {
             }
         });
         return true;
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        new Timer().scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                RequestQueue queue = Volley.newRequestQueue(MainScreen.this);
+                String url = getString(R.string.ip_address) + "/chat_app/update_last_seen.php";
+                StringRequest stringRequest = new StringRequest(Request.Method.POST, url,
+                        response -> {
+                            Log.d("response", response);
+                        }, error -> {
+                    Log.d("error", error.toString());
+                }) {
+                    @Override
+                    protected Map<String, String> getParams() {
+                        Map<String, String> params = new HashMap<>();
+                        params.put("email", currentUser.getEmail());
+                        return params;
+                    }
+                };
+                if(users!=null) {
+                    String nestedUrl = getString(R.string.ip_address) + "/chat_app/get_chats.php";
+                    for(int k = 0; k < users.size(); k++) {
+                        int finalK = k;
+                        @SuppressLint("NotifyDataSetChanged") StringRequest nestedReq = new StringRequest(Request.Method.POST, nestedUrl, newResponse -> {
+                            try {
+                                JSONObject jsonObject1= new JSONObject(newResponse);
+                                if(jsonObject1.getInt("code")==1){
+                                    JSONArray jsonArray = jsonObject1.getJSONArray("data");
+                                    JSONObject object = jsonArray.getJSONObject(jsonArray.length()-1);
+                                    users.get(finalK).setLastMessage(object.getString("message"));
+                                    for(int i = 0; i < users.size(); i++) {
+                                        if(users.get(i).getEmail().equals(users.get(finalK).getEmail())) {
+                                            users.set(i, users.get(finalK));
+                                            contactAdapter.notifyDataSetChanged();
+                                            break;
+                                        }
+                                    }
+                                }
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        }, error -> {
+                            Log.d("error", error.toString());
+                        }) {
+                            @Override
+                            protected java.util.Map<String, String> getParams() {
+                                java.util.Map<String, String> params = new java.util.HashMap<>();
+                                params.put("e1", currentUser.getEmail());
+                                params.put("e2", users.get(finalK).getEmail());
+                                return params;
+                            }
+                        };
+                        queue.add(nestedReq);
+                    }
+                }
+                queue.add(stringRequest);
+            }
+        }, 0, 10000);
     }
 
     private void filter(String filter_text) {
@@ -130,10 +206,10 @@ public class MainScreen extends AppCompatActivity {
                         if(phoneNumber.charAt(0) == '9') {
                             phoneNumber = "0" + phoneNumber.substring(2);
                         }
-                        String url = "http://192.168.100.2:8080/chat_app/get_via_phone.php";
+                        String url = getString(R.string.ip_address) + "/chat_app/get_via_phone.php";
                         RequestQueue queue = Volley.newRequestQueue(MainScreen.this);
                         String finalPhoneNumber = phoneNumber;
-                        StringRequest request = new StringRequest(Request.Method.POST, url, response -> {
+                        @SuppressLint("NotifyDataSetChanged") StringRequest request = new StringRequest(Request.Method.POST, url, response -> {
                             try {
                                 JSONObject jsonObject = new JSONObject(response);
                                 if(jsonObject.getInt("code") == 1) {
@@ -144,13 +220,52 @@ public class MainScreen extends AppCompatActivity {
                                     } catch (Exception e) {
                                         tempUser = jsonObject.getJSONObject("data");
                                     }
-                                    String photoURL = "http://192.168.100.2:8080/chat_app/" + tempUser.getString("photo");
+                                    String photoURL = getString(R.string.ip_address) + "/chat_app/" + tempUser.getString("photo");
                                     if(!addedUsers.contains(tempUser.getString("phno"))) {
                                         addedUsers.add(tempUser.getString("phno"));
                                         if(tempUser.getString("email").equals(currentUser.getEmail())) {
                                             Log.d("C", "CURRENT USER");
                                         } else {
-                                            users.add(new User(tempUser.getString("fullname"), tempUser.getString("email"), tempUser.getString("phno"), photoURL));
+                                            User youUser = new User(tempUser.getString("fullname"), tempUser.getString("email"), tempUser.getString("phno"), photoURL, tempUser.getLong("lastSeen"));
+                                            users.add(youUser);
+                                            contactAdapter.notifyDataSetChanged();
+                                            RequestQueue nestedQueue = Volley.newRequestQueue(MainScreen.this);
+                                            String nestedUrl = getString(R.string.ip_address) + "/chat_app/get_chats.php";
+                                            JSONObject finalTempUser = tempUser;
+                                            @SuppressLint("NotifyDataSetChanged") StringRequest nestedReq = new StringRequest(Request.Method.POST, nestedUrl, newResponse -> {
+                                                try {
+                                                    JSONObject jsonObject1= new JSONObject(newResponse);
+                                                    if(jsonObject1.getInt("code")==1){
+                                                        JSONArray jsonArray = jsonObject1.getJSONArray("data");
+                                                        JSONObject object = jsonArray.getJSONObject(jsonArray.length()-1);
+                                                        youUser.setLastMessage(object.getString("message"));
+                                                        for(int i = 0; i < users.size(); i++) {
+                                                            if(users.get(i).getEmail().equals(youUser.getEmail())) {
+                                                                users.set(i, youUser);
+                                                                contactAdapter.notifyDataSetChanged();
+                                                                break;
+                                                            }
+                                                        }
+                                                    }
+                                                } catch (Exception e) {
+                                                    e.printStackTrace();
+                                                }
+                                            }, error -> {
+                                                Log.d("error", error.toString());
+                                            }) {
+                                                @Override
+                                                protected java.util.Map<String, String> getParams() {
+                                                    java.util.Map<String, String> params = new java.util.HashMap<>();
+                                                    params.put("e1", currentUser.getEmail());
+                                                    try {
+                                                        params.put("e2", finalTempUser.getString("email"));
+                                                    } catch (JSONException e) {
+                                                        e.printStackTrace();
+                                                    }
+                                                    return params;
+                                                }
+                                            };
+                                            nestedQueue.add(nestedReq);
                                         }
                                     }
                                 }

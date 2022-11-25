@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.ContentObserver;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -32,24 +33,35 @@ import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
 import com.bumptech.glide.Glide;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.textview.MaterialTextView;
 import com.google.gson.Gson;
 import com.makeramen.roundedimageview.RoundedImageView;
 
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
+import java.sql.Timestamp;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.TimeZone;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class MessageListActivity extends AppCompatActivity{
     private RecyclerView mMessageRecycler;
     private MessageListAdapter mMessageAdapter;
-    TextView name;
+    MaterialTextView name;
+    MaterialTextView lastSeen;
     ShotWatch mShotWatch;
     EditText sendMsg;
+    View online_view;
     RoundedImageView img;
     private ArrayList<Message> mMessageList;
     private User youUser;
@@ -65,14 +77,21 @@ public class MessageListActivity extends AppCompatActivity{
         setContentView(R.layout.message_list);
         name=findViewById(R.id.curr_name);
         img=findViewById(R.id.curr_img);
+        lastSeen=findViewById(R.id.last_seen);
         sendBtn = findViewById(R.id.button_gchat_send);
         sendMsg = findViewById(R.id.edit_gchat_message);
         addImage = findViewById(R.id.button_gchat_img_send);
+        online_view = findViewById(R.id.online_status);
         mMessageRecycler = (RecyclerView) findViewById(R.id.recycler_gchat);
         images = new ArrayList<>();
         Gson gson = new Gson();
         currentUser = gson.fromJson(getIntent().getStringExtra("current_user"), User.class);
         youUser = gson.fromJson(getIntent().getStringExtra("you_user"), User.class);
+        Date date = new Date(youUser.getLastSeen()*1000);
+        @SuppressLint("SimpleDateFormat") DateFormat formatter = new SimpleDateFormat("MMM dd | HH:mm");
+        formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
+        String dateFormatted = formatter.format(date);
+        lastSeen.setText(dateFormatted);
         name.setText(youUser.getName());
         Glide.with(MessageListActivity.this).load(youUser.getPhoto()).into(img);
         img.setOnClickListener(new View.OnClickListener() {
@@ -88,6 +107,7 @@ public class MessageListActivity extends AppCompatActivity{
             public void onScreenShotTaken(ScreenshotData screenshotData) {
                 if(!Objects.equals(lastMessage, "Your Friend Took Screenshot of Chat :)")) {
                     sendMessage("Your Friend Took Screenshot of Chat :)", false, false);
+                    lastMessage = "Your Friend Took Screenshot of Chat :)";
                 }
             }
         });
@@ -124,6 +144,47 @@ public class MessageListActivity extends AppCompatActivity{
     protected void onResume() {
         super.onResume();
         mShotWatch.register();
+        new Timer().scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                RequestQueue queue = Volley.newRequestQueue(MessageListActivity.this);
+                String url = getString(R.string.ip_address) + "/chat_app/get_via_phone.php";
+                StringRequest stringRequest = new StringRequest(Request.Method.POST, url,
+                    response -> {
+                        try {
+                            JSONObject jsonObject = new JSONObject(response);
+                            if(jsonObject.getInt("code") == 1) {
+                                JSONObject tempUser;
+                                try {
+                                    JSONArray jsonArray = jsonObject.getJSONArray("data");
+                                    tempUser = jsonArray.getJSONObject(0);
+                                } catch (Exception e) {
+                                    tempUser = jsonObject.getJSONObject("data");
+                                }
+                                Long lastSeen = tempUser.getLong("lastSeen");
+                                Timestamp timestampAfter = new Timestamp(System.currentTimeMillis() + 60000);
+                                Timestamp timestampBefore = new Timestamp(System.currentTimeMillis() - 120000);
+                                Timestamp seen = new Timestamp(lastSeen*1000);
+                                if(seen.after(timestampBefore) && seen.before(timestampAfter)) {
+                                    online_view.setBackgroundColor(Color.argb(255, 0, 255, 0));
+                                }
+                            }
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+                    }, error -> {
+                    Log.d("error", error.toString());
+                }) {
+                    @Override
+                    protected Map<String, String> getParams() {
+                        Map<String, String> params = new HashMap<>();
+                        params.put("phone", youUser.getPhno());
+                        return params;
+                    }
+                };
+                queue.add(stringRequest);
+            }
+        }, 0, 10000);
     }
 
     @Override
@@ -170,7 +231,7 @@ public class MessageListActivity extends AppCompatActivity{
     }
 
     private void sendMessage(String message, boolean isPhoto, boolean isVoice) {
-        String url = "http://192.168.100.2:8080/chat_app/send_chats.php";
+        String url = getString(R.string.ip_address) + "/chat_app/send_chats.php";
         RequestQueue queue = Volley.newRequestQueue(MessageListActivity.this);
         StringRequest stringRequest = new StringRequest(Request.Method.POST, url,
                 response -> {
@@ -218,7 +279,7 @@ public class MessageListActivity extends AppCompatActivity{
 
     private void getChats() {
         mMessageList = new ArrayList<>();
-        String url = "http://192.168.100.2:8080/chat_app/get_chats.php";
+        String url = getString(R.string.ip_address) + "/chat_app/get_chats.php";
         RequestQueue queue = Volley.newRequestQueue(MessageListActivity.this);
         @SuppressLint("NotifyDataSetChanged") StringRequest request = new StringRequest(Request.Method.POST, url, response -> {
             try {

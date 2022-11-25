@@ -1,12 +1,16 @@
 package com.example.assignment3;
 
 import android.annotation.SuppressLint;
+import android.app.AlertDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.text.InputType;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -116,23 +120,71 @@ public class MessageListAdapter extends RecyclerView.Adapter {
             if(message.getIsPhoto()) {
                 iv.setMaxHeight(70);
                 iv.setMaxWidth(70);
-                Glide.with(mContext).load("http://192.168.100.2:8080/chat_app/" + message.getMessage()).into(iv);
+                Glide.with(mContext).load(mContext.getString(R.string.ip_address) + "/chat_app/" + message.getMessage()).into(iv);
                 iv.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
                         Intent intent = new Intent(mContext, ViewDp.class);
-                        intent.putExtra("photo", "http://192.168.100.2:8080/chat_app/" + message.getMessage());
+                        intent.putExtra("photo", mContext.getString(R.string.ip_address) + "/chat_app/" + message.getMessage());
                         mContext.startActivity(intent);
                     }
                 });
                 messageText.setText("");
             } else {
                 messageText.setText(message.getMessage());
+                ll.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View view) {
+
+                        AlertDialog.Builder builder = new AlertDialog.Builder(mContext);
+                        builder.setTitle("Edit Message");
+                        final EditText input = new EditText(mContext);
+                        input.setText(message.getMessage());
+                        input.setInputType(InputType.TYPE_CLASS_TEXT);
+                        builder.setView(input);
+                        builder.setPositiveButton("UPDATE", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialogInterface, int i) {
+                                String text = input.getText().toString();
+                                message.setMessage(text);
+                                String url = mContext.getString(R.string.ip_address) + "/chat_app/update_chats.php";
+                                RequestQueue queue = Volley.newRequestQueue(mContext);
+                                @SuppressLint("NotifyDataSetChanged") StringRequest request = new StringRequest(Request.Method.POST, url, response -> {
+                                    try {
+                                        JSONObject jsonObject = new JSONObject(response);
+                                        if(jsonObject.getInt("code") == 1) {
+                                            Toast.makeText(mContext, jsonObject.getString("msg"), Toast.LENGTH_SHORT).show();
+                                            notifyDataSetChanged();
+                                        } else {
+                                            Toast.makeText(mContext, "Error", Toast.LENGTH_SHORT).show();
+                                        }
+                                    } catch (Exception e) {
+                                        e.printStackTrace();
+                                    }
+                                }, error -> {
+                                    Log.d("Error", error.toString());
+                                }) {
+                                    @Override
+                                    protected java.util.Map<String, String> getParams() {
+                                        java.util.Map<String, String> params = new java.util.HashMap<>();
+                                        params.put("e1", currentUser.getEmail());
+                                        params.put("e2", youUser.getEmail());
+                                        params.put("msg", message.getMessage());
+                                        params.put("time", Long.toString(message.getCreatedAt()));
+                                        return params;
+                                    }
+                                };
+                                queue.add(request);
+                            }
+                        });
+                        builder.show();
+                    }
+                });
             }
             ll.setOnLongClickListener(new View.OnLongClickListener() {
                 @Override
                 public boolean onLongClick(View view) {
-                    String url = "http://192.168.100.2:8080/chat_app/delete_chats.php";
+                    String url = mContext.getString(R.string.ip_address) + "/chat_app/delete_chats.php";
                     RequestQueue queue = Volley.newRequestQueue(mContext);
                     StringRequest request = new StringRequest(Request.Method.POST, url, response -> {
                         try {
@@ -199,12 +251,12 @@ public class MessageListAdapter extends RecyclerView.Adapter {
             if(message.getIsPhoto()) {
                 iv.setMaxHeight(70);
                 iv.setMaxWidth(70);
-                Glide.with(mContext).load("http://192.168.100.2:8080/chat_app/" + message.getMessage()).into(iv);
+                Glide.with(mContext).load(mContext.getString(R.string.ip_address) + "/chat_app/" + message.getMessage()).into(iv);
                 iv.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
                         Intent intent = new Intent(mContext, ViewDp.class);
-                        intent.putExtra("photo", "http://192.168.100.2:8080/chat_app/" + message.getMessage());
+                        intent.putExtra("photo", mContext.getString(R.string.ip_address) + "/chat_app/" + message.getMessage());
                         mContext.startActivity(intent);
                     }
                 });

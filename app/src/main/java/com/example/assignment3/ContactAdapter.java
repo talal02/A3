@@ -57,7 +57,7 @@ public class ContactAdapter extends RecyclerView.Adapter<ContactAdapter.ViewHold
     public void onBindViewHolder(@NonNull ContactAdapter.ViewHolder holder, int position) {
         User user = users.get(position);
         holder.name.setText(user.getName());
-        holder.lastMsg.setText("BEEEE");
+        holder.lastMsg.setText(user.getLastMessage());
         Glide.with(c).load(user.getPhoto()).into(holder.profile);
         holder.message.setOnClickListener(new View.OnClickListener() {
             @Override

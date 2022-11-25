@@ -30,7 +30,7 @@
 
         <com.google.android.material.textview.MaterialTextView
             android:layout_width="0dp"
-            android:layout_weight="0.8"
+            android:layout_weight="0.5"
             android:gravity="center"
             android:layout_height="match_parent"
             android:text="@string/login"
@@ -38,6 +38,26 @@
             android:textColor="@color/white"
             android:textSize="20dp"
             android:id="@+id/curr_name"
+            />
+
+        <com.google.android.material.textview.MaterialTextView
+            android:layout_width="0dp"
+            android:layout_weight="0.3"
+            android:gravity="center"
+            android:layout_height="match_parent"
+            android:text="@string/login"
+            android:textAlignment="center"
+            android:textColor="@color/white"
+            android:textSize="16dp"
+            android:id="@+id/last_seen"
+            />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_weight="0.1"
+            android:layout_height="match_parent"
+            android:id="@+id/online_status"
+            android:background="#F00"
             />
 
     </LinearLayout>

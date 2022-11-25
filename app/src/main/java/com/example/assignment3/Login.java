@@ -3,16 +3,21 @@ package com.example.assignment3;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.annotation.SuppressLint;
+import android.app.AlertDialog;
 import android.app.DownloadManager;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.android.volley.AuthFailureError;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
 import com.google.android.material.textfield.TextInputLayout;
@@ -29,7 +34,7 @@ public class Login extends AppCompatActivity {
 
     TextInputLayout email, password;
     Button login;
-    TextView tsu;
+    TextView tsu, forgot;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,7 +44,58 @@ public class Login extends AppCompatActivity {
         password = findViewById(R.id.password);
         login = findViewById(R.id.loginBtn);
         tsu = findViewById(R.id.toSignup);
+        forgot = findViewById(R.id.forgot);
+        forgot.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if(email.getEditText().getText().toString().isEmpty()) {
+                    email.setError("Enter Email");
+                } else {
+                    AlertDialog.Builder builder = new AlertDialog.Builder(Login.this);
+                    builder.setTitle("Forgot Password");
+                    RequestQueue queue = Volley.newRequestQueue(Login.this);
+                    String url = getString(R.string.ip_address) + "/chat_app/forgot_password.php";
+                    StringRequest request = new StringRequest(Request.Method.POST, url, new Response.Listener<String>() {
+                        @Override
+                        public void onResponse(String response) {
+                            try {
+                                JSONObject object = new JSONObject(response);
+                                if (object.getInt("code") == 1) {
+                                    builder.setMessage(object.getString("msg")).setCancelable(true).show();
+                                } else {
+                                    Toast.makeText(Login.this, "Email not found", Toast.LENGTH_SHORT).show();
+                                }
+                            } catch (JSONException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }, new Response.ErrorListener() {
+                        @Override
+                        public void onErrorResponse(VolleyError error) {
+                            error.printStackTrace();
+                            Toast.makeText(Login.this, "Error: " + error.getMessage(), Toast.LENGTH_SHORT).show();
+                        }
+                    }) {
+                        @Override
+                        protected Map<String, String> getParams() throws AuthFailureError {
+                            Map<String, String> params = new HashMap<>();
+                            params.put("email", email.getEditText().getText().toString());
+                            return params;
+                        }
+                    };
+                    queue.add(request);
+                }
+            }
+        });
 
+        tsu.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent(Login.this, SignUp.class);
+                startActivity(intent);
+                finish();
+            }
+        });
         login.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -48,7 +104,7 @@ public class Login extends AppCompatActivity {
                 if (mail.isEmpty() || pass.isEmpty()) {
                     Toast.makeText(Login.this, "Please fill all the fields", Toast.LENGTH_SHORT).show();
                 } else {
-                    String url = "http://192.168.100.2:8080/chat_app/login.php";
+                    String url = getString(R.string.ip_address) + "/chat_app/login.php";
                     RequestQueue queue = Volley.newRequestQueue(Login.this);
                     StringRequest request = new StringRequest(Request.Method.POST, url, response -> {
                         try {
@@ -63,8 +119,8 @@ public class Login extends AppCompatActivity {
                                 }
                                 Intent i = new Intent(Login.this, MainScreen.class);
                                 Gson gson = new Gson();
-                                String photoURL = "http://192.168.100.2:8080/chat_app/" + tempUser.getString("photo");
-                                String userJson = gson.toJson(new User(tempUser.getString("fullname"), tempUser.getString("email"), tempUser.getString("phno"), photoURL));
+                                String photoURL = getString(R.string.ip_address) + "/chat_app/" + tempUser.getString("photo");
+                                String userJson = gson.toJson(new User(tempUser.getString("fullname"), tempUser.getString("email"), tempUser.getString("phno"), photoURL, tempUser.getLong("lastSeen")));
                                 i.putExtra("currentUser", userJson);
                                 startActivity(i);
                                 finish();
